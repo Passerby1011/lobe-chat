@@ -1,5 +1,69 @@
 [
   {
+    "children": {},
+    "date": "2026-01-17",
+    "version": "2.0.0-next.301"
+  },
+  {
+    "children": {
+      "fixes": ["Fix supervisor group prompt."]
+    },
+    "date": "2026-01-17",
+    "version": "2.0.0-next.300"
+  },
+  {
+    "children": {
+      "fixes": ["Fix topic messages display error when switch topic quickly."]
+    },
+    "date": "2026-01-17",
+    "version": "2.0.0-next.299"
+  },
+  {
+    "children": {
+      "fixes": ["Fix switch skill in home."]
+    },
+    "date": "2026-01-16",
+    "version": "2.0.0-next.298"
+  },
+  {
+    "children": {
+      "features": ["Add agent group publish into market & use market group agents in lobehub."]
+    },
+    "date": "2026-01-16",
+    "version": "2.0.0-next.297"
+  },
+  {
+    "children": {
+      "improvements": ["Improve todo list."]
+    },
+    "date": "2026-01-16",
+    "version": "2.0.0-next.296"
+  },
+  {
+    "children": {
+      "improvements": ["Migrate Next.js navigation APIs to React Router for SPA."]
+    },
+    "date": "2026-01-15",
+    "version": "2.0.0-next.295"
+  },
+  {
+    "children": {},
+    "date": "2026-01-15",
+    "version": "2.0.0-next.294"
+  },
+  {
+    "children": {},
+    "date": "2026-01-15",
+    "version": "2.0.0-next.293"
+  },
+  {
+    "children": {
+      "improvements": ["Use fallbackData to prevent useActionSWR auto-fetch."]
+    },
+    "date": "2026-01-15",
+    "version": "2.0.0-next.292"
+  },
+  {
     "children": {
       "fixes": ["Click lobe ai topic trigger create new agent."],
       "improvements": ["Improve agent loading state."]

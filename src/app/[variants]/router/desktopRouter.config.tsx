@@ -170,6 +170,13 @@ export const desktopRoutes: RouteConfig[] = [
               },
               {
                 element: dynamicElement(
+                  () => import('../(main)/community/(detail)/group_agent'),
+                  'Desktop > Discover > Detail > Group Agent',
+                ),
+                path: 'group_agent/:slug',
+              },
+              {
+                element: dynamicElement(
                   () => import('../(main)/community/(detail)/model'),
                   'Desktop > Discover > Detail > Model',
                 ),
@@ -403,10 +410,7 @@ export const desktopRoutes: RouteConfig[] = [
   {
     children: [
       {
-        element: dynamicElement(
-          () => import('../share/t/[id]'),
-          'Desktop > Share > Topic',
-        ),
+        element: dynamicElement(() => import('../share/t/[id]'), 'Desktop > Share > Topic'),
         path: ':id',
       },
     ],

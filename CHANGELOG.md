@@ -2,6 +2,274 @@
 
 # Changelog
 
+## [Version 2.0.0-next.301](https://github.com/lobehub/lobe-chat/compare/v2.0.0-next.300...v2.0.0-next.301)
+
+<sup>Released on **2026-01-17**</sup>
+
+#### 🐛 Bug Fixes
+
+- **desktop**: Ensure allowPrerelease is set correctly for updater.
+
+<br/>
+
+<details>
+<summary><kbd>Improvements and Fixes</kbd></summary>
+
+#### What's fixed
+
+- **desktop**: Ensure allowPrerelease is set correctly for updater, closes [#11566](https://github.com/lobehub/lobe-chat/issues/11566) ([9383c6b](https://github.com/lobehub/lobe-chat/commit/9383c6b))
+
+</details>
+
+<div align="right">
+
+[![](https://img.shields.io/badge/-BACK_TO_TOP-151515?style=flat-square)](#readme-top)
+
+</div>
+
+## [Version 2.0.0-next.300](https://github.com/lobehub/lobe-chat/compare/v2.0.0-next.299...v2.0.0-next.300)
+
+<sup>Released on **2026-01-17**</sup>
+
+#### 🐛 Bug Fixes
+
+- **misc**: Fix supervisor group prompt.
+
+<br/>
+
+<details>
+<summary><kbd>Improvements and Fixes</kbd></summary>
+
+#### What's fixed
+
+- **misc**: Fix supervisor group prompt, closes [#11543](https://github.com/lobehub/lobe-chat/issues/11543) ([3a6efbc](https://github.com/lobehub/lobe-chat/commit/3a6efbc))
+
+</details>
+
+<div align="right">
+
+[![](https://img.shields.io/badge/-BACK_TO_TOP-151515?style=flat-square)](#readme-top)
+
+</div>
+
+## [Version 2.0.0-next.299](https://github.com/lobehub/lobe-chat/compare/v2.0.0-next.298...v2.0.0-next.299)
+
+<sup>Released on **2026-01-17**</sup>
+
+#### ♻ Code Refactoring
+
+- **ui**: Migrate from Dropdown to DropdownMenu/ContextMenuTrigger components.
+
+#### 🐛 Bug Fixes
+
+- **misc**: Fix topic messages display error when switch topic quickly.
+
+<br/>
+
+<details>
+<summary><kbd>Improvements and Fixes</kbd></summary>
+
+#### Code refactoring
+
+- **ui**: Migrate from Dropdown to DropdownMenu/ContextMenuTrigger components, closes [#11539](https://github.com/lobehub/lobe-chat/issues/11539) ([9c9d4b1](https://github.com/lobehub/lobe-chat/commit/9c9d4b1))
+
+#### What's fixed
+
+- **misc**: Fix topic messages display error when switch topic quickly, closes [#11542](https://github.com/lobehub/lobe-chat/issues/11542) ([371d91e](https://github.com/lobehub/lobe-chat/commit/371d91e))
+
+</details>
+
+<div align="right">
+
+[![](https://img.shields.io/badge/-BACK_TO_TOP-151515?style=flat-square)](#readme-top)
+
+</div>
+
+## [Version 2.0.0-next.298](https://github.com/lobehub/lobe-chat/compare/v2.0.0-next.297...v2.0.0-next.298)
+
+<sup>Released on **2026-01-16**</sup>
+
+#### 🐛 Bug Fixes
+
+- **misc**: Fix switch skill in home.
+
+<br/>
+
+<details>
+<summary><kbd>Improvements and Fixes</kbd></summary>
+
+#### What's fixed
+
+- **misc**: Fix switch skill in home, closes [#11537](https://github.com/lobehub/lobe-chat/issues/11537) ([d5561f3](https://github.com/lobehub/lobe-chat/commit/d5561f3))
+
+</details>
+
+<div align="right">
+
+[![](https://img.shields.io/badge/-BACK_TO_TOP-151515?style=flat-square)](#readme-top)
+
+</div>
+
+## [Version 2.0.0-next.297](https://github.com/lobehub/lobe-chat/compare/v2.0.0-next.296...v2.0.0-next.297)
+
+<sup>Released on **2026-01-16**</sup>
+
+#### ✨ Features
+
+- **misc**: Add agent group publish into market & use market group agents in lobehub.
+
+<br/>
+
+<details>
+<summary><kbd>Improvements and Fixes</kbd></summary>
+
+#### What's improved
+
+- **misc**: Add agent group publish into market & use market group agents in lobehub, closes [#11535](https://github.com/lobehub/lobe-chat/issues/11535) ([02b9e76](https://github.com/lobehub/lobe-chat/commit/02b9e76))
+
+</details>
+
+<div align="right">
+
+[![](https://img.shields.io/badge/-BACK_TO_TOP-151515?style=flat-square)](#readme-top)
+
+</div>
+
+## [Version 2.0.0-next.296](https://github.com/lobehub/lobe-chat/compare/v2.0.0-next.295...v2.0.0-next.296)
+
+<sup>Released on **2026-01-16**</sup>
+
+#### 💄 Styles
+
+- **misc**: Improve todo list.
+
+<br/>
+
+<details>
+<summary><kbd>Improvements and Fixes</kbd></summary>
+
+#### Styles
+
+- **misc**: Improve todo list, closes [#11533](https://github.com/lobehub/lobe-chat/issues/11533) ([a4b71e9](https://github.com/lobehub/lobe-chat/commit/a4b71e9))
+
+</details>
+
+<div align="right">
+
+[![](https://img.shields.io/badge/-BACK_TO_TOP-151515?style=flat-square)](#readme-top)
+
+</div>
+
+## [Version 2.0.0-next.295](https://github.com/lobehub/lobe-chat/compare/v2.0.0-next.294...v2.0.0-next.295)
+
+<sup>Released on **2026-01-15**</sup>
+
+#### ♻ Code Refactoring
+
+- **misc**: Migrate Next.js navigation APIs to React Router for SPA.
+
+<br/>
+
+<details>
+<summary><kbd>Improvements and Fixes</kbd></summary>
+
+#### Code refactoring
+
+- **misc**: Migrate Next.js navigation APIs to React Router for SPA, closes [#11394](https://github.com/lobehub/lobe-chat/issues/11394) ([2253d46](https://github.com/lobehub/lobe-chat/commit/2253d46))
+
+</details>
+
+<div align="right">
+
+[![](https://img.shields.io/badge/-BACK_TO_TOP-151515?style=flat-square)](#readme-top)
+
+</div>
+
+## [Version 2.0.0-next.294](https://github.com/lobehub/lobe-chat/compare/v2.0.0-next.293...v2.0.0-next.294)
+
+<sup>Released on **2026-01-15**</sup>
+
+#### 🐛 Bug Fixes
+
+- **chat**: Reset activeTopicId when switching agent/group.
+- **mcp**: Fix installation check hanging issue in desktop app.
+
+<br/>
+
+<details>
+<summary><kbd>Improvements and Fixes</kbd></summary>
+
+#### What's fixed
+
+- **chat**: Reset activeTopicId when switching agent/group, closes [#11523](https://github.com/lobehub/lobe-chat/issues/11523) ([fde54b0](https://github.com/lobehub/lobe-chat/commit/fde54b0))
+- **mcp**: Fix installation check hanging issue in desktop app, closes [#11524](https://github.com/lobehub/lobe-chat/issues/11524) ([b9341c3](https://github.com/lobehub/lobe-chat/commit/b9341c3))
+
+</details>
+
+<div align="right">
+
+[![](https://img.shields.io/badge/-BACK_TO_TOP-151515?style=flat-square)](#readme-top)
+
+</div>
+
+## [Version 2.0.0-next.293](https://github.com/lobehub/lobe-chat/compare/v2.0.0-next.292...v2.0.0-next.293)
+
+<sup>Released on **2026-01-15**</sup>
+
+#### ✨ Features
+
+- **desktop**: Add desktop release service and API endpoint.
+
+<br/>
+
+<details>
+<summary><kbd>Improvements and Fixes</kbd></summary>
+
+#### What's improved
+
+- **desktop**: Add desktop release service and API endpoint, closes [#11520](https://github.com/lobehub/lobe-chat/issues/11520) ([e3dc5be](https://github.com/lobehub/lobe-chat/commit/e3dc5be))
+
+</details>
+
+<div align="right">
+
+[![](https://img.shields.io/badge/-BACK_TO_TOP-151515?style=flat-square)](#readme-top)
+
+</div>
+
+## [Version 2.0.0-next.292](https://github.com/lobehub/lobe-chat/compare/v2.0.0-next.291...v2.0.0-next.292)
+
+<sup>Released on **2026-01-15**</sup>
+
+#### ♻ Code Refactoring
+
+- **misc**: Use fallbackData to prevent useActionSWR auto-fetch.
+
+#### ✨ Features
+
+- **desktop**: Add local update testing scripts and stable channel API version check.
+
+<br/>
+
+<details>
+<summary><kbd>Improvements and Fixes</kbd></summary>
+
+#### Code refactoring
+
+- **misc**: Use fallbackData to prevent useActionSWR auto-fetch, closes [#11514](https://github.com/lobehub/lobe-chat/issues/11514) ([d446163](https://github.com/lobehub/lobe-chat/commit/d446163))
+
+#### What's improved
+
+- **desktop**: Add local update testing scripts and stable channel API version check, closes [#11474](https://github.com/lobehub/lobe-chat/issues/11474) [#11513](https://github.com/lobehub/lobe-chat/issues/11513) ([959c210](https://github.com/lobehub/lobe-chat/commit/959c210))
+
+</details>
+
+<div align="right">
+
+[![](https://img.shields.io/badge/-BACK_TO_TOP-151515?style=flat-square)](#readme-top)
+
+</div>
+
 ## [Version 2.0.0-next.291](https://github.com/lobehub/lobe-chat/compare/v2.0.0-next.290...v2.0.0-next.291)
 
 <sup>Released on **2026-01-15**</sup>

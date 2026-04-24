@@ -4,14 +4,18 @@ import { HeartFilled } from '@ant-design/icons';
 import { ActionIcon, Button, Flexbox } from '@lobehub/ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import { X } from 'lucide-react';
-import Link from 'next/link';
-import { type ReactNode, memo } from 'react';
+import type { HTMLAttributeAnchorTarget, ReactNode } from 'react';
+import { memo } from 'react';
 
 export interface HighlightNotificationProps {
   actionHref?: string;
+  actionIcon?: ReactNode;
   actionLabel?: ReactNode;
+  actionTarget?: HTMLAttributeAnchorTarget;
   description?: ReactNode;
   image?: string;
+  onAction?: () => void;
+  onActionClick?: () => void;
   onClose?: () => void;
   open?: boolean;
   title?: ReactNode;
@@ -22,6 +26,14 @@ const styles = createStaticStyles(({ css }) => ({
     display: block;
     width: 100%;
     margin-block-start: 8px;
+  `,
+  actionContent: css`
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+
+    width: 100%;
   `,
   card: css`
     position: fixed;
@@ -38,7 +50,7 @@ const styles = createStaticStyles(({ css }) => ({
     border-radius: 12px;
 
     background: ${cssVar.colorBgContainer};
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 12%);
+    box-shadow: 0 4px 24px rgb(0 0 0 / 12%);
   `,
   closeButton: css`
     position: absolute;
@@ -62,28 +74,59 @@ const styles = createStaticStyles(({ css }) => ({
 }));
 
 const HighlightNotification = memo<HighlightNotificationProps>(
-  ({ open, onClose, image, title, description, actionLabel, actionHref }) => {
+  ({
+    actionHref,
+    actionIcon = <HeartFilled />,
+    actionLabel,
+    actionTarget = '_blank',
+    description,
+    image,
+    onAction,
+    onActionClick,
+    onClose,
+    open,
+    title,
+  }) => {
     if (!open) return null;
+
+    const actionContent = actionLabel ? (
+      <span className={styles.actionContent}>
+        {actionIcon && <span>{actionIcon}</span>}
+        <span>{actionLabel}</span>
+      </span>
+    ) : null;
 
     return (
       <Flexbox className={styles.card}>
-        <ActionIcon className={styles.closeButton} icon={X} onClick={onClose} size={14} />
+        <ActionIcon className={styles.closeButton} icon={X} size={14} onClick={onClose} />
         <Flexbox gap={0}>
           {image && <img alt="" className={styles.image} src={image} />}
           <Flexbox gap={4} padding={12}>
             {title && <div className={styles.title}>{title}</div>}
             {description && <div className={styles.description}>{description}</div>}
-            {actionLabel && (
-              <Link
+            {actionLabel && actionHref && (
+              <a
                 className={styles.action}
-                href={actionHref || '/'}
+                href={actionHref}
                 rel="noopener noreferrer"
-                target="_blank"
+                target={actionTarget}
+                onClick={onActionClick}
               >
-                <Button block icon={HeartFilled} size="small" type="primary">
-                  {actionLabel}
+                <Button block size="small" type="primary">
+                  {actionContent}
                 </Button>
-              </Link>
+              </a>
+            )}
+            {actionLabel && !actionHref && (
+              <Button
+                block
+                className={styles.action}
+                size="small"
+                type="primary"
+                onClick={onAction}
+              >
+                {actionContent}
+              </Button>
             )}
           </Flexbox>
         </Flexbox>

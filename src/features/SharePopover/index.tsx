@@ -2,16 +2,19 @@
 
 import {
   Button,
+  Checkbox,
+  copyToClipboard,
   Flexbox,
   Popover,
   Skeleton,
   Text,
-  copyToClipboard,
   usePopoverContext,
 } from '@lobehub/ui';
-import { App, Divider, Select } from 'antd';
+import { Select } from '@lobehub/ui/base-ui';
+import { App, Divider } from 'antd';
 import { ExternalLinkIcon, LinkIcon, LockIcon } from 'lucide-react';
-import { type ReactNode, memo, useCallback, useEffect, useRef, useState } from 'react';
+import { type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
 
@@ -19,6 +22,8 @@ import { useAppOrigin } from '@/hooks/useAppOrigin';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { topicService } from '@/services/topic';
 import { useChatStore } from '@/store/chat';
+import { useGlobalStore } from '@/store/global';
+import { systemStatusSelectors } from '@/store/global/selectors';
 
 import { styles } from './style';
 
@@ -37,6 +42,10 @@ const SharePopoverContent = memo<SharePopoverContentProps>(({ onOpenModal }) => 
   const appOrigin = useAppOrigin();
 
   const activeTopicId = useChatStore((s) => s.activeTopicId);
+  const [hideTopicSharePrivacyWarning, updateSystemStatus] = useGlobalStore((s) => [
+    systemStatusSelectors.systemStatus(s).hideTopicSharePrivacyWarning ?? false,
+    s.updateSystemStatus,
+  ]);
 
   const {
     data: shareInfo,
@@ -78,13 +87,38 @@ const SharePopoverContent = memo<SharePopoverContentProps>(({ onOpenModal }) => 
 
   const handleVisibilityChange = useCallback(
     (visibility: Visibility) => {
-      // Show confirmation when changing from private to link
-      if (currentVisibility === 'private' && visibility === 'link') {
+      // Show confirmation when changing from private to link (unless user has dismissed it)
+      if (
+        currentVisibility === 'private' &&
+        visibility === 'link' &&
+        !hideTopicSharePrivacyWarning
+      ) {
+        let doNotShowAgain = false;
+
         modal.confirm({
           cancelText: t('cancel', { ns: 'common' }),
-          content: t('shareModal.popover.privacyWarning.content'),
+          centered: true,
+          content: (
+            <div>
+              <p>{t('shareModal.popover.privacyWarning.content')}</p>
+              <div style={{ marginTop: 16 }}>
+                <Checkbox
+                  onChange={(v) => {
+                    doNotShowAgain = v;
+                  }}
+                >
+                  {t('shareModal.popover.privacyWarning.doNotShowAgain')}
+                </Checkbox>
+              </div>
+            </div>
+          ),
           okText: t('shareModal.popover.privacyWarning.confirm'),
-          onOk: () => updateVisibility(visibility),
+          onOk: () => {
+            if (doNotShowAgain) {
+              updateSystemStatus({ hideTopicSharePrivacyWarning: true });
+            }
+            updateVisibility(visibility);
+          },
           title: t('shareModal.popover.privacyWarning.title'),
           type: 'warning',
         });
@@ -92,7 +126,14 @@ const SharePopoverContent = memo<SharePopoverContentProps>(({ onOpenModal }) => 
         updateVisibility(visibility);
       }
     },
-    [currentVisibility, modal, t, updateVisibility],
+    [
+      currentVisibility,
+      hideTopicSharePrivacyWarning,
+      modal,
+      t,
+      updateSystemStatus,
+      updateVisibility,
+    ],
   );
 
   const handleCopyLink = useCallback(async () => {
@@ -148,26 +189,25 @@ const SharePopoverContent = memo<SharePopoverContentProps>(({ onOpenModal }) => 
         <Text type="secondary">{t('shareModal.popover.visibility')}</Text>
         <Select
           disabled={updating}
-          getPopupContainer={() => containerRef.current || document.body}
+          options={visibilityOptions}
+          style={{ width: '100%' }}
+          value={currentVisibility}
           labelRender={({ value }) => {
             const option = visibilityOptions.find((o) => o.value === value);
             return (
-              <Flexbox align="center" gap={8} horizontal>
+              <Flexbox horizontal align="center" gap={8}>
                 {option?.icon}
                 {option?.label}
               </Flexbox>
             );
           }}
-          onChange={handleVisibilityChange}
           optionRender={(option) => (
-            <Flexbox align="center" gap={8} horizontal>
+            <Flexbox horizontal align="center" gap={8}>
               {visibilityOptions.find((o) => o.value === option.value)?.icon}
               {option.label}
             </Flexbox>
           )}
-          options={visibilityOptions}
-          style={{ width: '100%' }}
-          value={currentVisibility}
+          onChange={handleVisibilityChange}
         />
       </Flexbox>
 
@@ -177,19 +217,21 @@ const SharePopoverContent = memo<SharePopoverContentProps>(({ onOpenModal }) => 
 
       <Divider style={{ margin: '4px 0' }} />
 
-      <Flexbox align="center" horizontal justify="space-between">
+      <Flexbox horizontal align="center" justify="space-between">
         <Button
           icon={ExternalLinkIcon}
-          onClick={handleOpenModal}
           size="small"
           type="text"
           variant="text"
+          onClick={handleOpenModal}
         >
           {t('shareModal.popover.moreOptions')}
         </Button>
-        <Button icon={LinkIcon} onClick={handleCopyLink} size="small" type="primary">
-          {t('shareModal.copyLink')}
-        </Button>
+        {currentVisibility !== 'private' && (
+          <Button icon={LinkIcon} size="small" type="primary" onClick={handleCopyLink}>
+            {t('shareModal.copyLink')}
+          </Button>
+        )}
       </Flexbox>
     </Flexbox>
   );
@@ -208,13 +250,13 @@ const SharePopover = memo<SharePopoverProps>(({ children, onOpenModal }) => {
       arrow={false}
       content={<SharePopoverContent onOpenModal={onOpenModal} />}
       placement={isMobile ? 'top' : 'bottomRight'}
+      trigger={['click']}
       styles={{
         content: {
           padding: 0,
           width: isMobile ? '100vw' : 366,
         },
       }}
-      trigger={['click']}
     >
       {children}
     </Popover>

@@ -43,7 +43,6 @@ const Header = memo(() => {
               </Text>
             </>
           )}
-          {/* Auto Save Status */}
           {documentId && <AutoSaveHint documentId={documentId} style={{ marginLeft: 6 }} />}
         </>
       }
@@ -51,8 +50,8 @@ const Header = memo(() => {
         <>
           {/* Three-dot menu */}
           <DropdownMenu
+            iconSpaceMode="group"
             items={menuItems}
-            nativeButton={false}
             placement="bottomRight"
             popupProps={{
               style: {

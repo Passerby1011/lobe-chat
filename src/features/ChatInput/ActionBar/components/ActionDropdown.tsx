@@ -1,24 +1,26 @@
 'use client';
 
 import {
-  DropdownMenuPopup,
   type DropdownMenuPopupProps,
-  DropdownMenuPortal,
-  DropdownMenuPositioner,
   type DropdownMenuProps,
-  DropdownMenuRoot,
-  DropdownMenuTrigger,
   type MenuItemType,
   type MenuProps,
   type PopoverTrigger,
+} from '@lobehub/ui';
+import {
+  DropdownMenuPopup,
+  DropdownMenuPortal,
+  DropdownMenuPositioner,
+  DropdownMenuRoot,
+  DropdownMenuTrigger,
   renderDropdownMenuItems,
 } from '@lobehub/ui';
 import { createStaticStyles, cx } from 'antd-style';
+import { type CSSProperties, type ReactNode } from 'react';
 import {
-  type CSSProperties,
-  type ReactNode,
   isValidElement,
   memo,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -26,6 +28,7 @@ import {
   useState,
 } from 'react';
 
+import DebugNode from '@/components/DebugNode';
 import { useIsMobile } from '@/hooks/useIsMobile';
 
 const styles = createStaticStyles(({ css }) => ({
@@ -33,6 +36,9 @@ const styles = createStaticStyles(({ css }) => ({
     .ant-avatar {
       margin-inline-end: var(--ant-margin-xs);
     }
+  `,
+  trigger: css`
+    outline: none;
   `,
 }));
 
@@ -55,7 +61,7 @@ export interface ActionDropdownProps extends Omit<DropdownMenuProps, 'items'> {
   minWidth?: number | string;
   popupRender?: (menu: ReactNode) => ReactNode;
   /**
-   * 是否在挂载时预渲染弹层，避免首次触发展开时的渲染卡顿
+   * Whether to pre-render the dropdown overlay on mount, to avoid rendering lag on first expand
    */
   prefetch?: boolean;
   trigger?: PopoverTrigger;
@@ -117,8 +123,9 @@ const ActionDropdown = memo<ActionDropdownProps>(
       return trigger === 'hover';
     }, [trigger]);
     const resolvedTriggerProps = useMemo(() => {
-      if (openOnHover === undefined) return triggerProps;
+      if (openOnHover === undefined) return { nativeButton: false, ...triggerProps };
       return {
+        nativeButton: false,
         ...triggerProps,
         openOnHover,
       };
@@ -259,18 +266,24 @@ const ActionDropdown = memo<ActionDropdownProps>(
       <DropdownMenuRoot
         {...rest}
         defaultOpen={defaultOpen}
+        open={open}
         onOpenChange={handleOpenChange}
         onOpenChangeComplete={handleOpenChangeComplete}
-        open={open}
       >
-        <DropdownMenuTrigger {...resolvedTriggerProps}>{children}</DropdownMenuTrigger>
+        <DropdownMenuTrigger className={styles.trigger} {...resolvedTriggerProps}>
+          {children}
+        </DropdownMenuTrigger>
         <DropdownMenuPortal container={resolvedPortalContainer} {...restPortalProps}>
           <DropdownMenuPositioner
             {...positionerProps}
             hoverTrigger={Boolean(resolvedTriggerProps?.openOnHover)}
             placement={isMobile ? 'top' : placement}
           >
-            <DropdownMenuPopup {...resolvedPopupProps}>{menuContent}</DropdownMenuPopup>
+            <DropdownMenuPopup {...resolvedPopupProps}>
+              <Suspense fallback={<DebugNode trace="ActionDropdown > popup" />}>
+                {menuContent}
+              </Suspense>
+            </DropdownMenuPopup>
           </DropdownMenuPositioner>
         </DropdownMenuPortal>
       </DropdownMenuRoot>

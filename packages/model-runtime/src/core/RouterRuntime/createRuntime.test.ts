@@ -1,6 +1,7 @@
+import { AgentRuntimeErrorType } from '@lobechat/types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { LobeRuntimeAI } from '../BaseAI';
+import type { LobeRuntimeAI } from '../BaseAI';
 import { createRouterRuntime } from './createRuntime';
 
 describe('createRouterRuntime', () => {
@@ -421,6 +422,83 @@ describe('createRouterRuntime', () => {
       ).rejects.toThrow('empty provider options');
     });
 
+    it('should not retry when ExceededContextWindow error is thrown', async () => {
+      const exceededError = {
+        errorType: AgentRuntimeErrorType.ExceededContextWindow,
+        error: { message: 'Too many input tokens' },
+        provider: 'test',
+      };
+
+      const mockChatFail = vi.fn().mockRejectedValue(exceededError);
+      const mockChatSuccess = vi.fn().mockResolvedValue('success');
+
+      class FailRuntime implements LobeRuntimeAI {
+        chat = mockChatFail;
+      }
+
+      class SuccessRuntime implements LobeRuntimeAI {
+        chat = mockChatSuccess;
+      }
+
+      const Runtime = createRouterRuntime({
+        id: 'test-runtime',
+        routers: [
+          {
+            apiType: 'openai',
+            options: [
+              { apiKey: 'key-1', runtime: FailRuntime as any },
+              { apiKey: 'key-2', runtime: SuccessRuntime as any },
+            ],
+            runtime: FailRuntime as any,
+            models: ['gpt-4'],
+          },
+        ],
+      });
+
+      const runtime = new Runtime();
+      await expect(
+        runtime.chat({ model: 'gpt-4', messages: [], temperature: 0.7 }),
+      ).rejects.toEqual(exceededError);
+
+      // Second channel should never be called
+      expect(mockChatFail).toHaveBeenCalledTimes(1);
+      expect(mockChatSuccess).not.toHaveBeenCalled();
+    });
+
+    it('should still retry on other error types', async () => {
+      const bizError = {
+        errorType: AgentRuntimeErrorType.ProviderBizError,
+        error: { message: 'Server error' },
+        provider: 'test',
+      };
+
+      const mockChatFail = vi.fn().mockRejectedValue(bizError);
+
+      class FailRuntime implements LobeRuntimeAI {
+        chat = mockChatFail;
+      }
+
+      const Runtime = createRouterRuntime({
+        id: 'test-runtime',
+        routers: [
+          {
+            apiType: 'openai',
+            options: [{ apiKey: 'key-1' }, { apiKey: 'key-2' }],
+            runtime: FailRuntime as any,
+            models: ['gpt-4'],
+          },
+        ],
+      });
+
+      const runtime = new Runtime();
+      await expect(
+        runtime.chat({ model: 'gpt-4', messages: [], temperature: 0.7 }),
+      ).rejects.toEqual(bizError);
+
+      // Both channels should be tried
+      expect(mockChatFail).toHaveBeenCalledTimes(2);
+    });
+
     it('should use apiType from option item when specified for fallback', async () => {
       const constructorCalls: any[] = [];
 
@@ -452,6 +530,97 @@ describe('createRouterRuntime', () => {
   });
 
   describe('router matching', () => {
+    describe('baseURLPattern matching', () => {
+      it('should match router by baseURLPattern (RegExp)', async () => {
+        const mockChatOpenAI = vi.fn().mockResolvedValue('openai-response');
+        const mockChatAnthropic = vi.fn().mockResolvedValue('anthropic-response');
+
+        class OpenAIRuntime implements LobeRuntimeAI {
+          chat = mockChatOpenAI;
+        }
+
+        class AnthropicRuntime implements LobeRuntimeAI {
+          chat = mockChatAnthropic;
+        }
+
+        const Runtime = createRouterRuntime({
+          id: 'test-runtime',
+          routers: [
+            {
+              apiType: 'anthropic',
+              baseURLPattern: /\/anthropic\/?$/,
+              options: { apiKey: 'anthropic-key' },
+              runtime: AnthropicRuntime as any,
+            },
+            {
+              apiType: 'openai',
+              options: { apiKey: 'openai-key' },
+              runtime: OpenAIRuntime as any,
+            },
+          ],
+        });
+
+        const runtime = new Runtime({
+          apiKey: 'test',
+          baseURL: 'https://api.example.com/anthropic',
+        });
+        const result = await runtime.chat({
+          model: 'test-model',
+          messages: [],
+          temperature: 0.7,
+        });
+
+        expect(result).toBe('anthropic-response');
+        expect(mockChatAnthropic).toHaveBeenCalled();
+        expect(mockChatOpenAI).not.toHaveBeenCalled();
+      });
+
+      it('should prioritize baseURLPattern over models matching', async () => {
+        const mockChatOpenAI = vi.fn().mockResolvedValue('openai-response');
+        const mockChatAnthropic = vi.fn().mockResolvedValue('anthropic-response');
+
+        class OpenAIRuntime implements LobeRuntimeAI {
+          chat = mockChatOpenAI;
+        }
+
+        class AnthropicRuntime implements LobeRuntimeAI {
+          chat = mockChatAnthropic;
+        }
+
+        const Runtime = createRouterRuntime({
+          id: 'test-runtime',
+          routers: [
+            {
+              apiType: 'anthropic',
+              baseURLPattern: /\/anthropic\/?$/,
+              options: { apiKey: 'anthropic-key' },
+              runtime: AnthropicRuntime as any,
+              models: ['claude-3'],
+            },
+            {
+              apiType: 'openai',
+              options: { apiKey: 'openai-key' },
+              runtime: OpenAIRuntime as any,
+              models: ['gpt-4', 'test-model'], // includes test-model
+            },
+          ],
+        });
+
+        // Even though 'test-model' matches OpenAI router, baseURLPattern should win
+        const runtime = new Runtime({
+          apiKey: 'test',
+          baseURL: 'https://api.example.com/anthropic',
+        });
+        const result = await runtime.chat({
+          model: 'test-model',
+          messages: [],
+          temperature: 0.7,
+        });
+
+        expect(result).toBe('anthropic-response');
+      });
+    });
+
     it('should fallback to last router when model does not match any', async () => {
       const mockChatFirst = vi.fn().mockResolvedValue('first-response');
       const mockChatLast = vi.fn().mockResolvedValue('last-response');
@@ -564,6 +733,99 @@ describe('createRouterRuntime', () => {
       const result = await runtime.createImage(payload);
       expect(result).toEqual({ imageUrl: 'https://example.com/image.png' });
       expect(mockCreateImage).toHaveBeenCalledWith(payload);
+    });
+
+    it('should forward options.metadata to onRouteAttempt', async () => {
+      const mockCreateImage = vi
+        .fn()
+        .mockResolvedValue({ imageUrl: 'https://example.com/image.png' });
+      const onRouteAttempt = vi.fn().mockResolvedValue(undefined);
+
+      class MockRuntime implements LobeRuntimeAI {
+        createImage = mockCreateImage;
+      }
+
+      const Runtime = createRouterRuntime({
+        id: 'test-runtime',
+        onRouteAttempt,
+        routers: [
+          {
+            apiType: 'openai',
+            options: {},
+            runtime: MockRuntime as any,
+            models: ['gpt-image-1'],
+          },
+        ],
+      });
+
+      const runtime = new Runtime();
+      const payload = { model: 'gpt-image-1', params: { prompt: 'a cat' } };
+      const metadata = { trigger: 'image' };
+
+      await runtime.createImage(payload, { metadata });
+
+      expect(mockCreateImage).toHaveBeenCalledWith(payload);
+      expect(onRouteAttempt).toHaveBeenCalledWith(expect.objectContaining({ metadata }));
+    });
+  });
+
+  describe('createVideo method', () => {
+    it('should call createVideo on the correct runtime', async () => {
+      const mockCreateVideo = vi.fn().mockResolvedValue({ inferenceId: 'job-1' });
+
+      class MockRuntime implements LobeRuntimeAI {
+        createVideo = mockCreateVideo;
+      }
+
+      const Runtime = createRouterRuntime({
+        id: 'test-runtime',
+        routers: [
+          {
+            apiType: 'openai',
+            options: {},
+            runtime: MockRuntime as any,
+            models: ['sora-1'],
+          },
+        ],
+      });
+
+      const runtime = new Runtime();
+      const payload = { model: 'sora-1', params: { prompt: 'a cat' } } as any;
+
+      const result = await runtime.createVideo(payload);
+      expect(result).toEqual({ inferenceId: 'job-1' });
+      expect(mockCreateVideo).toHaveBeenCalledWith(payload);
+    });
+
+    it('should forward options.metadata to onRouteAttempt', async () => {
+      const mockCreateVideo = vi.fn().mockResolvedValue({ inferenceId: 'job-1' });
+      const onRouteAttempt = vi.fn().mockResolvedValue(undefined);
+
+      class MockRuntime implements LobeRuntimeAI {
+        createVideo = mockCreateVideo;
+      }
+
+      const Runtime = createRouterRuntime({
+        id: 'test-runtime',
+        onRouteAttempt,
+        routers: [
+          {
+            apiType: 'openai',
+            options: {},
+            runtime: MockRuntime as any,
+            models: ['sora-1'],
+          },
+        ],
+      });
+
+      const runtime = new Runtime();
+      const payload = { model: 'sora-1', params: { prompt: 'a cat' } } as any;
+      const metadata = { trigger: 'video' };
+
+      await runtime.createVideo(payload, { metadata });
+
+      expect(mockCreateVideo).toHaveBeenCalledWith(payload);
+      expect(onRouteAttempt).toHaveBeenCalledWith(expect.objectContaining({ metadata }));
     });
   });
 

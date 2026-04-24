@@ -1,17 +1,29 @@
 'use client';
 
 import isEqual from 'fast-deep-equal';
-import { type ReactElement, type ReactNode, memo, useCallback, useEffect, useRef } from 'react';
-import { VList, type VListHandle } from 'virtua';
+import { type ReactElement, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
+import { type VListHandle } from 'virtua';
+import { VList } from 'virtua';
+import { useShallow } from 'zustand/react/shallow';
 
 import WideScreenContainer from '../../../WideScreenContainer';
-import { dataSelectors, useConversationStore, virtuaListSelectors } from '../../store';
+import {
+  dataSelectors,
+  messageStateSelectors,
+  useConversationStore,
+  virtuaListSelectors,
+} from '../../store';
+import {
+  CONVERSATION_SPACER_TRANSITION_MS,
+  useConversationSpacer,
+} from '../hooks/useConversationSpacer';
 import { useScrollToUserMessage } from '../hooks/useScrollToUserMessage';
+import { useSelectionMessageIds } from '../hooks/useSelectionMessageIds';
 import AutoScroll from './AutoScroll';
-import DebugInspector, {
-  AT_BOTTOM_THRESHOLD,
-  OPEN_DEV_INSPECTOR,
-} from './AutoScroll/DebugInspector';
+import { AT_BOTTOM_THRESHOLD } from './AutoScroll/const';
+import DebugInspector, { OPEN_DEV_INSPECTOR } from './AutoScroll/DebugInspector';
+import { useAutoScrollEnabled } from './AutoScroll/useAutoScrollEnabled';
 import BackBottom from './BackBottom';
 
 interface VirtualizedListProps {
@@ -26,7 +38,20 @@ interface VirtualizedListProps {
  */
 const VirtualizedList = memo<VirtualizedListProps>(({ dataSource, itemContent }) => {
   const virtuaRef = useRef<VListHandle>(null);
+  const didInitialScrollRef = useRef(false);
   const scrollEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const {
+    cancelPinMessageIndex,
+    handleScrollOffset,
+    isSpacerMessage,
+    listData,
+    registerSpacerNode,
+    scrollShrinking,
+    spacerHeight,
+    spacerActive,
+    spacerLayoutVersion,
+  } = useConversationSpacer(dataSource);
+  const isAutoScrollEnabled = useAutoScrollEnabled();
 
   // Store actions
   const registerVirtuaScrollMethods = useConversationStore((s) => s.registerVirtuaScrollMethods);
@@ -45,7 +70,7 @@ const VirtualizedList = memo<VirtualizedListProps>(({ dataSource, itemContent })
     const viewportSize = ref.viewportSize;
 
     return scrollSize - scrollOffset - viewportSize <= AT_BOTTOM_THRESHOLD;
-  }, [AT_BOTTOM_THRESHOLD]);
+  }, []);
 
   // Handle scroll events
   const handleScroll = useCallback(() => {
@@ -61,6 +86,12 @@ const VirtualizedList = memo<VirtualizedListProps>(({ dataSource, itemContent })
 
     setScrollState({ isScrolling: true });
 
+    // Shrink spacer on scroll up when not streaming
+    const ref = virtuaRef.current;
+    if (ref) {
+      handleScrollOffset(ref.scrollOffset);
+    }
+
     // Check if at bottom
     const isAtBottom = checkAtBottom();
     setScrollState({ atBottom: isAtBottom });
@@ -74,7 +105,7 @@ const VirtualizedList = memo<VirtualizedListProps>(({ dataSource, itemContent })
     scrollEndTimerRef.current = setTimeout(() => {
       setScrollState({ isScrolling: false });
     }, 150);
-  }, [activeIndex, checkAtBottom, setActiveIndex, setScrollState]);
+  }, [activeIndex, checkAtBottom, handleScrollOffset, setActiveIndex, setScrollState]);
 
   const handleScrollEnd = useCallback(() => {
     setScrollState({ isScrolling: false });
@@ -85,9 +116,12 @@ const VirtualizedList = memo<VirtualizedListProps>(({ dataSource, itemContent })
     const ref = virtuaRef.current;
     if (ref) {
       registerVirtuaScrollMethods({
+        getItemOffset: (index) => ref.getItemOffset(index),
+        getItemSize: (index) => ref.getItemSize(index),
         getScrollOffset: () => ref.scrollOffset,
         getScrollSize: () => ref.scrollSize,
         getViewportSize: () => ref.viewportSize,
+        scrollTo: (offset) => ref.scrollTo(offset),
         scrollToIndex: (index, options) => ref.scrollToIndex(index, options),
       });
 
@@ -113,42 +147,103 @@ const VirtualizedList = memo<VirtualizedListProps>(({ dataSource, itemContent })
     };
   }, [resetVisibleItems]);
 
-  // Get the last message to check if it's a user message
+  // Get the second-to-last message to check if it's a user message
+  // (When sending a message, user + assistant messages are created as a pair)
   const displayMessages = useConversationStore(dataSelectors.displayMessages);
-  const lastMessage = displayMessages.at(-1);
-  const isLastMessageFromUser = lastMessage?.role === 'user';
+  const secondLastMessage = displayMessages.at(-2);
+  const isSecondLastMessageFromUser = secondLastMessage?.role === 'user';
+
+  // Keep currently-streaming items mounted so vlist recycling never triggers
+  // Markdown animation replay when the user scrolls them back into view.
+  const streamingIndices = useConversationStore(
+    useShallow((s) => {
+      const indices: number[] = [];
+      for (let i = 0; i < dataSource.length; i++) {
+        const id = dataSource[i];
+        if (!id) continue;
+        if (messageStateSelectors.isMessageGenerating(id)(s)) indices.push(i);
+      }
+      return indices;
+    }),
+  );
+
+  // Also keep items that host the active text selection — unmounting a node
+  // containing a Selection endpoint would silently drop the user's highlight.
+  const selectionMessageIds = useSelectionMessageIds();
+
+  const keepMountedIndices = useMemo(() => {
+    if (selectionMessageIds.size === 0) return streamingIndices;
+    const merged = new Set<number>(streamingIndices);
+    for (let i = 0; i < dataSource.length; i++) {
+      const id = dataSource[i];
+      if (id && selectionMessageIds.has(id)) merged.add(i);
+    }
+    if (merged.size === streamingIndices.length) return streamingIndices;
+    return [...merged].sort((a, b) => a - b);
+  }, [dataSource, streamingIndices, selectionMessageIds]);
 
   // Auto scroll to user message when user sends a new message
-  // Only scroll when the new message is from the user, not when AI/agent responds
+  // Only scroll when 2 new messages are added and second-to-last is from user
   useScrollToUserMessage({
+    cancelPinMessageIndex,
     dataSourceLength: dataSource.length,
-    isLastMessageFromUser,
+    isSecondLastMessageFromUser,
+    scrollShrinking,
     scrollToIndex: virtuaRef.current?.scrollToIndex ?? null,
+    spacerActive,
+    spacerLayoutVersion,
   });
 
   // Scroll to bottom on initial render
   useEffect(() => {
-    if (virtuaRef.current && dataSource.length > 0) {
-      virtuaRef.current.scrollToIndex(dataSource.length - 1, { align: 'end' });
-    }
-  }, []);
+    if (didInitialScrollRef.current || !virtuaRef.current || dataSource.length === 0) return;
+
+    virtuaRef.current.scrollToIndex(dataSource.length - 1, { align: 'end' });
+    didInitialScrollRef.current = true;
+  }, [dataSource.length]);
 
   const atBottom = useConversationStore(virtuaListSelectors.atBottom);
   const scrollToBottom = useConversationStore((s) => s.scrollToBottom);
 
   return (
     <div style={{ height: '100%', position: 'relative' }}>
-      {/* Debug Inspector - 放在 VList 外面，不会被虚拟列表回收 */}
+      {/* Debug Inspector - placed outside VList so it won't be recycled by the virtual list */}
       {OPEN_DEV_INSPECTOR && <DebugInspector />}
       <VList
         bufferSize={typeof window !== 'undefined' ? window.innerHeight : 0}
-        data={dataSource}
+        data={listData}
+        keepMounted={keepMountedIndices}
+        ref={virtuaRef}
+        style={{ height: '100%', overflowAnchor: 'none', paddingBottom: 24 }}
         onScroll={handleScroll}
         onScrollEnd={handleScrollEnd}
-        ref={virtuaRef}
-        style={{ height: '100%', paddingBottom: 24 }}
       >
         {(messageId, index): ReactElement => {
+          if (isSpacerMessage(messageId)) {
+            // Only animate the collapse-to-zero (unmount). Any non-zero height
+            // change (initial mount, shrink as assistant grows) is applied
+            // instantly so virtua's scrollSize updates in a single frame and
+            // scrollToIndex can reach the user message without trailing behind
+            // a 200ms transition.
+            const shouldAnimate = !scrollShrinking && spacerHeight === 0;
+            return (
+              <WideScreenContainer key={messageId} style={{ position: 'relative' }}>
+                <div
+                  aria-hidden
+                  ref={registerSpacerNode}
+                  style={{
+                    height: spacerHeight,
+                    pointerEvents: 'none',
+                    transition: shouldAnimate
+                      ? `height ${CONVERSATION_SPACER_TRANSITION_MS}ms ease`
+                      : 'none',
+                    width: '100%',
+                  }}
+                />
+              </WideScreenContainer>
+            );
+          }
+
           const isAgentCouncil = messageId.includes('agentCouncil');
           const isLastItem = index === dataSource.length - 1;
           const content = itemContent(index, messageId);
@@ -158,8 +253,8 @@ const VirtualizedList = memo<VirtualizedListProps>(({ dataSource, itemContent })
             return (
               <div key={messageId} style={{ position: 'relative', width: '100%' }}>
                 {content}
-                {/* AutoScroll 放在最后一个 Item 里面，这样只有当最后一个 Item 可见时才会触发自动滚动 */}
-                {isLastItem && <AutoScroll />}
+                {/* AutoScroll is placed inside the last Item so it only triggers when the last Item is visible */}
+                {isLastItem && isAutoScrollEnabled && !spacerActive && <AutoScroll />}
               </div>
             );
           }
@@ -167,14 +262,19 @@ const VirtualizedList = memo<VirtualizedListProps>(({ dataSource, itemContent })
           return (
             <WideScreenContainer key={messageId} style={{ position: 'relative' }}>
               {content}
-              {/* AutoScroll 放在最后一个 Item 里面，这样只有当最后一个 Item 可见时才会触发自动滚动 */}
-              {isLastItem && <AutoScroll />}
+              {isLastItem && isAutoScrollEnabled && !spacerActive && <AutoScroll />}
             </WideScreenContainer>
           );
         }}
       </VList>
-      {/* BackBottom 放在 VList 外面，这样无论滚动到哪里都能看到 */}
-      <BackBottom atBottom={atBottom} onScrollToBottom={() => scrollToBottom(true)} visible={!atBottom} />
+      {/* BackBottom is placed outside VList so it remains visible regardless of scroll position */}
+      <WideScreenContainer style={{ position: 'relative' }}>
+        <BackBottom
+          atBottom={atBottom}
+          visible={!atBottom}
+          onScrollToBottom={() => scrollToBottom(true)}
+        />
+      </WideScreenContainer>
     </div>
   );
 }, isEqual);

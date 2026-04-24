@@ -1,16 +1,37 @@
-import { ARTIFACT_TAG_REGEX, ARTIFACT_THINKING_TAG_REGEX } from '@lobechat/const';
+import { ARTIFACT_THINKING_TAG_REGEX } from '@lobechat/const';
+
+const ARTIFACT_TAG_REGEX_GLOBAL =
+  /<lobeArtifact\b[^>]*>(?<content>[\S\s]*?)(?:<\/lobeArtifact>|$)/g;
+const HTML_SCRIPT_TAG_REGEX = /<script\b[^>]*>[\S\s]*?<\/script(?:\s[^>]*)?>/gi;
+const SCRIPT_PLACEHOLDER_PREFIX = '____LOBE_ARTIFACT_SCRIPT_BLOCK_';
+
+const removeArtifactLineBreaks = (content: string) => {
+  const scripts: string[] = [];
+  const contentWithoutScripts = content.replaceAll(HTML_SCRIPT_TAG_REGEX, (script) => {
+    const index = scripts.length;
+    scripts.push(script);
+    return `${SCRIPT_PLACEHOLDER_PREFIX}${index}____`;
+  });
+
+  return scripts.reduce(
+    (result, script, index) => result.replace(`${SCRIPT_PLACEHOLDER_PREFIX}${index}____`, script),
+    contentWithoutScripts.replaceAll(/\r?\n|\r/g, ''),
+  );
+};
 
 /**
  * Replace all line breaks in the matched `lobeArtifact` tag with an empty string
  */
 export const processWithArtifact = (input: string = '') => {
   // First remove outer fenced code block if it exists
+  /* eslint-disable regexp/no-super-linear-backtracking */
   let output = input.replace(
-    /^([\S\s]*?)\s*```[^\n]*\n((?:<lobeThinking>[\S\s]*?<\/lobeThinking>\s*\n\s*)?<lobeArtifact[\S\s]*?<\/lobeArtifact>\s*)\n```\s*([\S\s]*?)$/,
+    /^([\s\S]*?)\s*```[^\n]*\n((?:<lobeThinking>[\s\S]*?<\/lobeThinking>[\t\v\f\r \xA0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]*\n\s*)?<lobeArtifact[\s\S]*?<\/lobeArtifact>\s*)\n```\s*([\s\S]*)$/,
     (_, before = '', content, after = '') => {
       return [before.trim(), content.trim(), after.trim()].filter(Boolean).join('\n\n');
     },
   );
+  /* eslint-enable regexp/no-super-linear-backtracking */
 
   const thinkMatch = ARTIFACT_THINKING_TAG_REGEX.exec(output);
 
@@ -27,7 +48,7 @@ export const processWithArtifact = (input: string = '') => {
 
   // Remove fenced code block between lobeArtifact and HTML content
   output = output.replace(
-    /(<lobeArtifact[^>]*>)\s*```[^\n]*\n([\S\s]*?)(```\n)?(<\/lobeArtifact>)/,
+    /(<lobeArtifact[^>]*>)\s*```[^\n]*\n([\s\S]*?)(```\n)?(<\/lobeArtifact>)/,
     (_, start, content, __, end) => {
       if (content.trim().startsWith('<!DOCTYPE html') || content.trim().startsWith('<html')) {
         return start + content.trim() + end;
@@ -38,20 +59,18 @@ export const processWithArtifact = (input: string = '') => {
 
   // Keep existing code blocks that are not part of lobeArtifact
   output = output.replace(
-    /^([\S\s]*?)(<lobeThinking>[\S\s]*?<\/lobeThinking>\s*\n\s*<lobeArtifact[\S\s]*?<\/lobeArtifact>)([\S\s]*?)$/,
+    /^([\s\S]*?)(<lobeThinking>[\s\S]*?<\/lobeThinking>[\t\v\f\r \xA0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]*\n\s*<lobeArtifact[\s\S]*?<\/lobeArtifact>)([\s\S]*)$/,
     (_, before, content, after) => {
       return [before.trim(), content.trim(), after.trim()].filter(Boolean).join('\n\n');
     },
   );
 
-  const match = ARTIFACT_TAG_REGEX.exec(output);
-  // If the input contains the `lobeArtifact` tag, replace all line breaks with an empty string
-  if (match) {
-    output = output.replace(ARTIFACT_TAG_REGEX, (match) => match.replaceAll(/\r?\n|\r/g, ''));
-  }
+  // If the input contains `lobeArtifact` tags, replace all line breaks with an empty string
+  // Use global regex to handle multiple artifacts in the same message
+  output = output.replaceAll(ARTIFACT_TAG_REGEX_GLOBAL, removeArtifactLineBreaks);
 
   // if not match, check if it's start with <lobeArtifact but not closed
-  const regex = /<lobeArtifact\b(?:(?!\/?>)[\S\s])*$/;
+  const regex = /<lobeArtifact\b(?:(?!\/?>)[\s\S])*$/;
   if (regex.test(output)) {
     output = output.replace(regex, '<lobeArtifact>');
   }
@@ -59,17 +78,17 @@ export const processWithArtifact = (input: string = '') => {
   return output;
 };
 
-// 预处理函数：确保 think 标签前后有两个换行符
+// Preprocessing function: ensure two newlines before and after think tags
 export const normalizeThinkTags = (input: string) => {
   return (
     input
-      // 确保 <think> 标签前后有两个换行符
+      // Ensure two newlines before and after <think> tags
       .replaceAll(/([^\n])\s*<think>/g, '$1\n\n<think>')
       .replaceAll(/<think>\s*([^\n])/g, '<think>\n\n$1')
-      // 确保 </think> 标签前后有两个换行符
+      // Ensure two newlines before and after </think> tags
       .replaceAll(/([^\n])\s*<\/think>/g, '$1\n\n</think>')
       .replaceAll(/<\/think>\s*([^\n])/g, '</think>\n\n$1')
-      // 处理可能产生的多余换行符
+      // Remove excess newlines that may have been introduced
       .replaceAll(/\n{3,}/g, '\n\n')
   );
 };

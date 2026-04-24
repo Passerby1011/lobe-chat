@@ -1,4 +1,5 @@
-import { Icon, type ItemType } from '@lobehub/ui';
+import { type ItemType } from '@lobehub/ui';
+import { Icon } from '@lobehub/ui';
 import isEqual from 'fast-deep-equal';
 import { ArrowRight, LibraryBig } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -12,10 +13,10 @@ import { useAgentId } from '../../hooks/useAgentId';
 import CheckboxItem from '../components/CheckboxWithLoading';
 
 export const useControls = ({
-  setModalOpen,
+  openAttachKnowledgeModal,
   setUpdating,
 }: {
-  setModalOpen: (open: boolean) => void;
+  openAttachKnowledgeModal: () => void;
   setUpdating: (updating: boolean) => void;
 }) => {
   const { t } = useTranslation('chat');
@@ -84,7 +85,7 @@ export const useControls = ({
       key: 'knowledge-base-store',
       label: t('knowledgeBase.viewMore'),
       onClick: () => {
-        setModalOpen(true);
+        openAttachKnowledgeModal();
       },
     },
   ];

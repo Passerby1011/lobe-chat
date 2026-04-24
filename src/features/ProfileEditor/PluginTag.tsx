@@ -1,11 +1,7 @@
 'use client';
 
-import {
-  KLAVIS_SERVER_TYPES,
-  type KlavisServerType,
-  LOBEHUB_SKILL_PROVIDERS,
-  type LobehubSkillProviderType,
-} from '@lobechat/const';
+import { type KlavisServerType, type LobehubSkillProviderType } from '@lobechat/const';
+import { KLAVIS_SERVER_TYPES, LOBEHUB_SKILL_PROVIDERS } from '@lobechat/const';
 import { Avatar, Icon, Tag } from '@lobehub/ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import isEqual from 'fast-deep-equal';
@@ -27,7 +23,7 @@ import {
 import { type LobeToolMetaWithAvailability } from '@/store/tool/slices/builtin/selectors';
 
 /**
- * Klavis 服务器图标组件
+ * Klavis server icon component
  */
 const KlavisIcon = memo<Pick<KlavisServerType, 'icon' | 'label'>>(({ icon, label }) => {
   if (typeof icon === 'string') {
@@ -38,7 +34,7 @@ const KlavisIcon = memo<Pick<KlavisServerType, 'icon' | 'label'>>(({ icon, label
 });
 
 /**
- * LobeHub Skill Provider 图标组件
+ * LobeHub Skill Provider icon component
  */
 const LobehubSkillIcon = memo<Pick<LobehubSkillProviderType, 'icon' | 'label'>>(
   ({ icon, label }) => {
@@ -110,11 +106,11 @@ const PluginTag = memo<PluginTagProps>(
     );
     const installedPluginList = useToolStore(pluginSelectors.installedPluginMetaList, isEqual);
 
-    // Klavis 相关状态
+    // Klavis-related state
     const allKlavisServers = useToolStore(klavisStoreSelectors.getServers, isEqual);
     const isKlavisEnabledInEnv = useServerConfigStore(serverConfigSelectors.enableKlavis);
 
-    // LobeHub Skill 相关状态
+    // LobeHub Skill-related state
     const allLobehubSkillServers = useToolStore(lobehubSkillStoreSelectors.getServers, isEqual);
     const isLobehubSkillEnabled = useServerConfigStore(serverConfigSelectors.enableLobehubSkill);
 
@@ -268,18 +264,18 @@ const PluginTag = memo<PluginTagProps>(
 
     return (
       <Tag
-        className={styles.tag}
         closable
+        className={styles.tag}
         closeIcon={<X size={12} />}
         color={showErrorState ? 'error' : undefined}
         icon={renderIcon()}
-        onClose={onRemove}
+        variant={isDarkMode ? 'filled' : 'outlined'}
         title={
           showErrorState
             ? t('tools.notInstalledWarning', { defaultValue: 'This tool is not installed' })
             : undefined
         }
-        variant={isDarkMode ? 'filled' : 'outlined'}
+        onClose={onRemove}
       >
         {getDisplayText()}
       </Tag>

@@ -74,6 +74,7 @@ export const getServerGlobalConfig = async () => {
     defaultAgent: {
       config: parseAgentConfig(DEFAULT_AGENT_CONFIG),
     },
+    disableEmailPassword: authEnv.AUTH_DISABLE_EMAIL_PASSWORD,
     enableBusinessFeatures: ENABLE_BUSINESS_FEATURES,
     enableEmailVerification: authEnv.AUTH_EMAIL_VERIFICATION,
     enableKlavis: !!klavisEnv.KLAVIS_API_KEY,
@@ -83,6 +84,11 @@ export const getServerGlobalConfig = async () => {
       appEnv.MARKET_TRUSTED_CLIENT_SECRET && appEnv.MARKET_TRUSTED_CLIENT_ID
     ),
     enableUploadFileToServer: !!fileEnv.S3_SECRET_ACCESS_KEY,
+
+    // Expose Agent Gateway URL to client when queue-based agent runtime is enabled
+    ...(appEnv.enableQueueAgentRuntime && appEnv.AGENT_GATEWAY_URL
+      ? { agentGatewayUrl: appEnv.AGENT_GATEWAY_URL }
+      : undefined),
 
     image: cleanObject({
       defaultImageNum: imageEnv.AI_IMAGE_DEFAULT_IMAGE_NUM,

@@ -7,12 +7,12 @@ import { useTranslation } from 'react-i18next';
 import { useUserStore } from '@/store/user';
 
 import { useConversationStore } from '../../../../../store';
-import { useMessageAggregationContext } from '../../../../Contexts/MessageAggregationContext';
 import { type ApprovalMode } from './index';
 
 interface ApprovalActionsProps {
   apiName: string;
   approvalMode: ApprovalMode;
+  assistantGroupId?: string;
   identifier: string;
   messageId: string;
   /**
@@ -24,7 +24,7 @@ interface ApprovalActionsProps {
 }
 
 const ApprovalActions = memo<ApprovalActionsProps>(
-  ({ approvalMode, messageId, identifier, apiName, onBeforeApprove }) => {
+  ({ approvalMode, messageId, identifier, apiName, onBeforeApprove, assistantGroupId }) => {
     const { t } = useTranslation(['chat', 'common']);
     const [rejectReason, setRejectReason] = useState('');
     const [rejectPopoverOpen, setRejectPopoverOpen] = useState(false);
@@ -34,24 +34,21 @@ const ApprovalActions = memo<ApprovalActionsProps>(
     // Disable actions while message is still being created (temp ID)
     const isMessageCreating = messageId.startsWith('tmp_');
 
-    const { assistantGroupId } = useMessageAggregationContext();
-    const [approveToolCall, rejectToolCall, rejectAndContinueToolCall] = useConversationStore(
-      (s) => [s.approveToolCall, s.rejectToolCall, s.rejectAndContinueToolCall],
-    );
+    const [approveToolCall, rejectAndContinueToolCall] = useConversationStore((s) => [
+      s.approveToolCall,
+      s.rejectAndContinueToolCall,
+    ]);
     const addToolToAllowList = useUserStore((s) => s.addToolToAllowList);
 
     const handleApprove = async (remember?: boolean) => {
       setApproveLoading(true);
       try {
-        // 0. Flush pending saves from intervention components (e.g., debounced saves)
         if (onBeforeApprove) {
           await onBeforeApprove();
         }
 
-        // 1. Update intervention status
-        await approveToolCall(messageId, assistantGroupId);
+        await approveToolCall(messageId, assistantGroupId ?? '');
 
-        // 2. If remembered, add to allowList
         if (remember) {
           const toolKey = `${identifier}/${apiName}`;
           await addToolToAllowList(toolKey);
@@ -63,14 +60,6 @@ const ApprovalActions = memo<ApprovalActionsProps>(
 
     const handleReject = async (reason?: string) => {
       setRejectLoading(true);
-      await rejectToolCall(messageId, reason);
-      setRejectLoading(false);
-      setRejectPopoverOpen(false);
-      setRejectReason('');
-    };
-
-    const handleRejectAndContinue = async (reason?: string) => {
-      setRejectLoading(true);
       await rejectAndContinueToolCall(messageId, reason);
       setRejectLoading(false);
       setRejectPopoverOpen(false);
@@ -78,40 +67,32 @@ const ApprovalActions = memo<ApprovalActionsProps>(
     };
 
     return (
-      <Flexbox gap={8} horizontal>
+      <Flexbox horizontal gap={8}>
         <Popover
+          open={rejectPopoverOpen}
+          placement="bottomRight"
+          trigger="click"
           content={
             <Flexbox gap={12} style={{ width: 400 }}>
-              <Flexbox align={'center'} horizontal justify={'space-between'}>
+              <Flexbox horizontal align={'center'} justify={'space-between'}>
                 <div>{t('tool.intervention.rejectTitle')}</div>
 
-                <Space>
-                  <Button
-                    color={'default'}
-                    loading={rejectLoading}
-                    onClick={() => handleReject(rejectReason)}
-                    size="small"
-                    variant={'filled'}
-                  >
-                    {t('tool.intervention.rejectOnly')}
-                  </Button>
-                  <Button
-                    loading={rejectLoading}
-                    onClick={() => handleRejectAndContinue(rejectReason)}
-                    size="small"
-                    type="primary"
-                  >
-                    {t('tool.intervention.rejectAndContinue')}
-                  </Button>
-                </Space>
+                <Button
+                  loading={rejectLoading}
+                  size="small"
+                  type="primary"
+                  onClick={() => handleReject(rejectReason)}
+                >
+                  {t('tool.intervention.rejectAndContinue')}
+                </Button>
               </Flexbox>
               <Input.TextArea
                 autoFocus
-                onChange={(e) => setRejectReason(e.target.value)}
                 placeholder={t('tool.intervention.rejectReasonPlaceholder')}
                 rows={3}
                 value={rejectReason}
                 variant={'filled'}
+                onChange={(e) => setRejectReason(e.target.value)}
               />
             </Flexbox>
           }
@@ -120,9 +101,6 @@ const ApprovalActions = memo<ApprovalActionsProps>(
 
             setRejectPopoverOpen(open);
           }}
-          open={rejectPopoverOpen}
-          placement="bottomRight"
-          trigger="click"
         >
           <Button color={'default'} disabled={isMessageCreating} size="small" variant={'filled'}>
             {t('tool.intervention.reject')}
@@ -134,9 +112,9 @@ const ApprovalActions = memo<ApprovalActionsProps>(
             <Button
               disabled={isMessageCreating}
               loading={approveLoading}
-              onClick={() => handleApprove(true)}
               size="small"
               type="primary"
+              onClick={() => handleApprove(true)}
             >
               {t('tool.intervention.approveAndRemember')}
             </Button>
@@ -162,9 +140,9 @@ const ApprovalActions = memo<ApprovalActionsProps>(
           <Button
             disabled={isMessageCreating}
             loading={approveLoading}
-            onClick={() => handleApprove()}
             size="small"
             type="primary"
+            onClick={() => handleApprove()}
           >
             {t('tool.intervention.approve')}
           </Button>
